@@ -1,4 +1,23 @@
-version: '3.8'
+# version: '3.8'
+
+# services:
+#   rustfs:
+#     image: rustfs/rustfs:latest
+#     container_name: rustfs
+#     restart: unless-stopped
+#     ports:
+#       - "8080:8080"   # RustFS HTTP API
+#       - "9090:9090"   # Metrics
+#       - "9001:9001"   # Web Console
+#     volumes:
+#       - ./data:/data             # Persistent storage (buckets + files)
+#       - ./config:/etc/rustfs     # Config folder mounted as writable
+#     environment:
+#       - RUSTFS_ACCESS_KEY=myaccesskey
+#       - RUSTFS_SECRET_KEY=mysecretkey
+# ----------------------
+
+version: '3.9'
 
 services:
   rustfs:
@@ -10,8 +29,8 @@ services:
       - "9090:9090"   # Metrics
       - "9001:9001"   # Web Console
     volumes:
-      - ./data:/data             # Persistent storage (buckets + files)
-      - ./config:/etc/rustfs     # Config folder mounted as writable
+      - ./data:/data             # Buckets + files
+      - ./config:/etc/rustfs     # Config folder (read-write)
     environment:
       - RUSTFS_ACCESS_KEY=myaccesskey
       - RUSTFS_SECRET_KEY=mysecretkey
