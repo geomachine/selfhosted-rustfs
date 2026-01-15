@@ -1,108 +1,102 @@
-# Quick Start Guide (Dual Domain Setup)
+# Quick Start Guide
 
-## On Your VPS
+Get RustFS up and running in 5 minutes.
 
-### 1. Edit .env file
+## Prerequisites
+
+- Ubuntu 20.04+ server with public IP
+- Two DNS A records pointing to your server:
+  - `rustfs.yourdomain.com`
+  - `api-rustfs.yourdomain.com`
+- Ports 80 and 443 open in firewall
+
+## Installation
+
+### 1. Install Docker
 
 ```bash
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker $USER
+```
+
+Log out and back in.
+
+### 2. Clone and Configure
+
+```bash
+git clone https://github.com/yourusername/selfhosted-rustfs.git
+cd selfhosted-rustfs
+cp .env.example .env
 nano .env
 ```
 
-Change these lines:
+Update these lines:
 ```bash
-CONSOLE_DOMAIN=rustfs.yourdomain.com        # ← Change to your console subdomain
-API_DOMAIN=api-rustfs.yourdomain.com        # ← Change to your API subdomain
-RUSTFS_ROOT_PASSWORD=rustfsadmin            # ← Change to a strong password
+CONSOLE_DOMAIN=rustfs.yourdomain.com
+API_DOMAIN=api-rustfs.yourdomain.com
+RUSTFS_ROOT_PASSWORD=your-strong-password
 ```
 
-Save and exit (Ctrl+X, then Y, then Enter)
-
-### 2. Run the automated SSL setup
+### 3. Run Setup
 
 ```bash
+chmod +x setup-ssl.sh
 ./setup-ssl.sh
 ```
 
-This will:
-- Install certbot
-- Obtain SSL certificates for BOTH domains
-- Update nginx configuration with your domains
-- Start all services
+Enter your email when prompted.
 
-### 3. Access your RustFS
+## Access
 
-**Web Console:**
-```
-https://rustfs.yourdomain.com/
-```
+- **Console**: https://rustfs.yourdomain.com/
+- **API**: https://api-rustfs.yourdomain.com/
 
-**API Endpoint (for S3 clients):**
-```
-https://api-rustfs.yourdomain.com/
-```
-
-Login with credentials from your `.env` file.
-
-## Architecture
-
-```
-Internet
-   │
-   ├─→ rustfs.yourdomain.com (HTTPS) → Nginx → RustFS Console (9001)
-   │
-   └─→ api-rustfs.yourdomain.com (HTTPS) → Nginx → RustFS API (9000)
-```
-
-## S3 Client Configuration
-
-When using S3 clients (AWS CLI, boto3, etc.), use:
-
-```bash
-Endpoint: https://api-rustfs.yourdomain.com
-Access Key: rustfsadmin (or your custom username)
-Secret Key: rustfsadmin (or your custom password)
-```
-
-Example with AWS CLI:
-```bash
-aws configure set aws_access_key_id rustfsadmin
-aws configure set aws_secret_access_key rustfsadmin
-aws s3 ls --endpoint-url https://api-rustfs.yourdomain.com
-```
+Login with credentials from `.env` file.
 
 ## Common Commands
 
 ```bash
 make logs          # View logs
-make status        # Check if running
+make status        # Check status
 make restart       # Restart services
-make backup        # Backup your data
+make backup        # Create backup
 make stop          # Stop services
+```
+
+## Test S3 API
+
+```bash
+aws configure set aws_access_key_id your-username
+aws configure set aws_secret_access_key your-password
+
+aws s3 ls --endpoint-url https://api-rustfs.yourdomain.com
 ```
 
 ## Troubleshooting
 
-**Can't access the console?**
+**Blank page?**
 ```bash
-# Check if containers are running
-make status
-
-# Check logs
-make logs
-
-# Test health endpoints
-curl https://rustfs.yourdomain.com/health
-curl https://api-rustfs.yourdomain.com/health
+docker restart rustfs-nginx
 ```
 
-**SSL certificate error?**
-- Wait 2-3 minutes for DNS propagation
-- Verify your subdomains point to VPS IP:
-  ```bash
-  dig rustfs.yourdomain.com
-  dig api-rustfs.yourdomain.com
-  ```
-- Check firewall allows port 80 and 443
+**SSL errors?**
+```bash
+sudo certbot certificates
+./setup-ssl.sh
+```
 
-**Need help?**
-Read the full [DEPLOYMENT.md](DEPLOYMENT.md) guide.
+**Can't connect?**
+- Check DNS: `dig rustfs.yourdomain.com`
+- Check firewall: `sudo ufw status`
+- Check logs: `make logs`
+
+## Next Steps
+
+1. Change default password
+2. Create your first bucket
+3. Setup automated backups
+4. Review [full documentation](README.md)
+
+---
+
+Need help? Check the [Troubleshooting Guide](README.md#troubleshooting) or [open an issue](https://github.com/yourusername/selfhosted-rustfs/issues).
