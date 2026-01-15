@@ -119,16 +119,25 @@ Enhancement suggestions are welcome! Please include:
 git clone https://github.com/yourusername/selfhosted-rustfs.git
 cd selfhosted-rustfs
 
-# Create development environment
-cp .env.example .env.dev
-nano .env.dev
-
-# Start services
-docker compose up
+# Start in development mode (no SSL required)
+make dev
 
 # View logs
-docker compose logs -f
+make logs-rustfs
+
+# Access console
+# Open browser: http://localhost:9001/rustfs/console/
+
+# Stop services
+make dev-stop
 ```
+
+**Development Mode Features:**
+- No SSL certificates required
+- Direct access to RustFS ports (9000, 9001)
+- No nginx reverse proxy
+- Faster startup
+- Ideal for testing changes
 
 ### Testing Changes
 
@@ -145,14 +154,23 @@ docker exec rustfs-nginx nginx -s reload
 #### Test Docker Compose
 
 ```bash
-# Validate compose file
+# Validate production compose file
 docker compose config
 
-# Start services
-docker compose up -d
+# Validate development compose file
+docker compose -f docker-compose.local.yml config
+
+# Start in development mode
+make dev
 
 # Check status
-docker compose ps
+docker ps
+
+# Test console access
+curl http://localhost:9001/rustfs/console/
+
+# Test API access
+curl http://localhost:9000/health
 ```
 
 #### Test SSL Setup

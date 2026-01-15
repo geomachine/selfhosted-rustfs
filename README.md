@@ -19,6 +19,15 @@ Production-ready deployment of RustFS S3-compatible object storage with Nginx re
 - [Contributing](#contributing)
 - [License](#license)
 
+## Documentation
+
+- **[README.md](README.md)** - This file, main documentation
+- **[QUICKSTART.md](QUICKSTART.md)** - Get started in 5 minutes
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Local development guide
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guide
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history
+
 ## Overview
 
 This project provides a complete Docker-based deployment solution for RustFS, a high-performance S3-compatible object storage system written in Rust. The setup includes:
@@ -103,14 +112,37 @@ Internet
 
 ## Quick Start
 
-### 1. Clone Repository
+### Local Development (No SSL)
+
+For local testing without SSL certificates:
+
+```bash
+# 1. Clone repository
+git clone https://github.com/yourusername/selfhosted-rustfs.git
+cd selfhosted-rustfs
+
+# 2. Start in development mode
+make dev
+```
+
+Access:
+- **Web Console**: http://localhost:9001/rustfs/console/
+- **API Endpoint**: http://localhost:9000/
+
+Default credentials: `rustfsadmin` / `rustfsadmin`
+
+### Production Deployment (With SSL)
+
+For production deployment with SSL certificates:
+
+#### 1. Clone Repository
 
 ```bash
 git clone https://github.com/yourusername/selfhosted-rustfs.git
 cd selfhosted-rustfs
 ```
 
-### 2. Configure Environment
+#### 2. Configure Environment
 
 ```bash
 cp .env.example .env
@@ -125,7 +157,7 @@ RUSTFS_ROOT_USER=yourusername
 RUSTFS_ROOT_PASSWORD=your-strong-password
 ```
 
-### 3. Run Automated Setup
+#### 3. Run Automated Setup
 
 ```bash
 chmod +x setup-ssl.sh
@@ -138,7 +170,7 @@ The script will:
 - Update nginx configuration
 - Start all services
 
-### 4. Access Your RustFS
+#### 4. Access Your RustFS
 
 - **Web Console**: https://rustfs.yourdomain.com/
 - **API Endpoint**: https://api-rustfs.yourdomain.com/
@@ -180,16 +212,24 @@ selfhosted-rustfs/
 
 ### Local Development
 
+For local development without SSL certificates:
+
 ```bash
-# Start services
-make up
+# Start in development mode (RustFS only, no nginx)
+make dev
 
 # View logs
-make logs
+make logs-rustfs
 
-# Stop services
-make stop
+# Stop development services
+make dev-stop
 ```
+
+**Access:**
+- Web Console: http://localhost:9001/rustfs/console/
+- API Endpoint: http://localhost:9000/
+
+**Note:** Development mode exposes RustFS ports directly without nginx reverse proxy.
 
 ### Production Deployment
 
@@ -351,8 +391,10 @@ s3.putObject({
 
 ### Available Commands
 
+#### Production Commands
+
 ```bash
-# Start services
+# Start services (production with nginx + SSL)
 make up
 
 # Stop services
@@ -369,7 +411,24 @@ make logs-nginx
 
 # View rustfs logs only
 make logs-rustfs
+```
 
+#### Development Commands
+
+```bash
+# Start in development mode (no SSL, direct access)
+make dev
+
+# Stop development services
+make dev-stop
+
+# View logs
+make logs-rustfs
+```
+
+#### Maintenance Commands
+
+```bash
 # Check container status
 make status
 

@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: rustfs
+    restart: unless-stopped
+    ports:
+      - "9000:9000"  # API - exposed for local dev
+      - "9001:9001"  # Console - exposed for local dev
+    volumes:
+      - ${DATA_DIR:-./data}:/data
+    environment:
+      - RUSTFS_ROOT_USER=${RUSTFS_ROOT_USER:-rustfsadmin}
+      - RUSTFS_ROOT_PASSWORD=${RUSTFS_ROOT_PASSWORD:-rustfsadmin}
+    command: /data
+    networks:
+      - rustfs-network
+
+networks:
+  rustfs-network:
+    driver: bridge

@@ -3,14 +3,16 @@ include .env
 # Default directories if not set in env
 DATA_DIR ?= ./data
 
-.PHONY: help up start stop restart logs logs-nginx logs-rustfs status clean backup restore ssl-setup
+.PHONY: help up start stop restart logs logs-nginx logs-rustfs status clean backup restore ssl-setup dev dev-stop
 
 help:
 	@echo "RustFS + Nginx Docker Makefile"
 	@echo "-------------------------------"
-	@echo "make up          - start rustfs + nginx containers"
+	@echo "make up          - start rustfs + nginx containers (production)"
+	@echo "make dev         - start rustfs only (local development)"
 	@echo "make start       - alias for 'make up'"
 	@echo "make stop        - stop all containers"
+	@echo "make dev-stop    - stop development containers"
 	@echo "make restart     - restart all containers"
 	@echo "make logs        - follow all logs"
 	@echo "make logs-nginx  - follow nginx logs only"
@@ -40,6 +42,25 @@ up:
 	@echo ""
 
 start: up
+
+# Local development (no nginx, direct access)
+dev:
+	@echo "[+] Ensuring data directory exists..."
+	@mkdir -p $(DATA_DIR)
+	@echo "[+] Setting ownership to UID 10001..."
+	@sudo chown -R 10001:10001 $(DATA_DIR) 2>/dev/null || true
+	@echo "[+] Starting RustFS (local development mode)..."
+	docker compose -f docker-compose.local.yml up -d
+	@echo ""
+	@echo "✓ RustFS is starting (local development)!"
+	@echo "  Web Console: http://localhost:9001/rustfs/console/"
+	@echo "  API Endpoint: http://localhost:9000/"
+	@echo "  Default credentials: $(RUSTFS_ROOT_USER) / $(RUSTFS_ROOT_PASSWORD)"
+	@echo ""
+
+dev-stop:
+	@echo "[+] Stopping development containers..."
+	docker compose -f docker-compose.local.yml down
 
 stop:
 	@echo "[+] Stopping all containers..."

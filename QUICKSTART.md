@@ -2,7 +2,28 @@
 
 Get RustFS up and running in 5 minutes.
 
-## Prerequisites
+## Local Development (No Prerequisites)
+
+For local testing on your machine:
+
+```bash
+# 1. Clone repository
+git clone https://github.com/yourusername/selfhosted-rustfs.git
+cd selfhosted-rustfs
+
+# 2. Start development mode
+make dev
+
+# 3. Access console
+# Open browser: http://localhost:9001/rustfs/console/
+# Login: rustfsadmin / rustfsadmin
+```
+
+That's it! No SSL, no DNS, no server needed.
+
+## Production Deployment
+
+### Prerequisites
 
 - Ubuntu 20.04+ server with public IP
 - Two DNS A records pointing to your server:
@@ -10,7 +31,7 @@ Get RustFS up and running in 5 minutes.
   - `api-rustfs.yourdomain.com`
 - Ports 80 and 443 open in firewall
 
-## Installation
+### Installation
 
 ### 1. Install Docker
 
@@ -55,7 +76,18 @@ Login with credentials from `.env` file.
 
 ## Common Commands
 
+### Development
+
 ```bash
+make dev           # Start development mode
+make dev-stop      # Stop development mode
+make logs-rustfs   # View logs
+```
+
+### Production
+
+```bash
+make up            # Start production mode
 make logs          # View logs
 make status        # Check status
 make restart       # Restart services
