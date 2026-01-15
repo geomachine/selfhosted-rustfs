@@ -1,0 +1,16 @@
+[server]
+bind_addr = "0.0.0.0:8080"
+metrics_addr = "0.0.0.0:9090"
+data_dir = "/data/rustfs"
+
+[storage]
+replication = 1
+erasure_coding = false
+max_object_size = 10737418240  # 10 GB
+
+[auth]
+enabled = true
+tokens = ["tenant1-secret-token", "tenant2-secret-token"]
+
+[logging]
+level = "info"
