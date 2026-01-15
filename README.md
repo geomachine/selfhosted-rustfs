@@ -118,7 +118,7 @@ For local testing without SSL certificates:
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/yourusername/selfhosted-rustfs.git
+git clone https://github.com/Tresorraum/selfhosted-rustfs.git
 cd selfhosted-rustfs
 
 # 2. Start in development mode
@@ -138,7 +138,7 @@ For production deployment with SSL certificates:
 #### 1. Clone Repository
 
 ```bash
-git clone https://github.com/yourusername/selfhosted-rustfs.git
+git clone https://github.com/Tresorraum/selfhosted-rustfs.git
 cd selfhosted-rustfs
 ```
 
