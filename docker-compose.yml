@@ -6,12 +6,11 @@ services:
     container_name: rustfs
     restart: unless-stopped
     ports:
-      - "8080:8080"   # RustFS HTTP API
-      - "9090:9090"   # Metrics
-      - "9001:9001"   # Web Console
+      - "${RUSTFS_PORT:-9000}:9000"           # RustFS HTTP API
+      - "${RUSTFS_WEB_PORT:-9001}:9001"       # Web Console
     volumes:
-      - ./data:/data             # Persistent storage (buckets + files)
-      - ./config:/etc/rustfs     # Config folder mounted as writable
+      - ${DATA_DIR:-./data}:/data             # Persistent storage (buckets + files)
     environment:
-      - RUSTFS_ACCESS_KEY=myaccesskey
-      - RUSTFS_SECRET_KEY=mysecretkey
+      - RUSTFS_ROOT_USER=${RUSTFS_ROOT_USER:-rustfsadmin}
+      - RUSTFS_ROOT_PASSWORD=${RUSTFS_ROOT_PASSWORD:-rustfsadmin}
+    command: /data

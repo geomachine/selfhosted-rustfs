@@ -2,14 +2,12 @@ include .env
 
 # Default directories if not set in env
 DATA_DIR ?= ./data
-CONFIG_DIR ?= ./config
 
-.PHONY: help build up start stop restart logs status clean backup restore binary rebuild
+.PHONY: help up start stop restart logs status clean backup restore
 
 help:
 	@echo "RustFS Docker Makefile"
 	@echo "---------------------"
-	@echo "make build       - build rustfs docker image (uses rustfs-binary)"
 	@echo "make up          - start rustfs container"
 	@echo "make start       - alias for 'make up'"
 	@echo "make stop        - stop rustfs container"
@@ -19,33 +17,27 @@ help:
 	@echo "make clean       - remove container and volumes (dangerous)"
 	@echo "make backup      - backup rustfs data"
 	@echo "make restore     - restore rustfs data from backup"
-	@echo "make binary      - build RustFS binary from source"
-	@echo "make rebuild     - rebuild binary + Docker image"
 	@echo ""
-
-# Build RustFS Docker image
-build:
-	@if [ -f ./rustfs-binary ]; then \
-		echo "[+] Using existing rustfs-binary"; \
-	else \
-		echo "[!] rustfs-binary not found. Please build it first with 'make binary' or download it."; \
-		exit 1; \
-	fi
-	docker build -t ${RUSTFS_IMAGE} .
 
 # Run Docker container
 up:
-	@echo "[+] Ensuring data and config directories exist..."
-	@mkdir -p $(DATA_DIR) $(CONFIG_DIR)
-	@touch $(CONFIG_DIR)/config.toml
+	@echo "[+] Ensuring data directory exists..."
+	@mkdir -p $(DATA_DIR)
 	@echo "[+] Setting ownership to UID 10001..."
-	@sudo chown -R 10001:10001 $(DATA_DIR) $(CONFIG_DIR)
+	@sudo chown -R 10001:10001 $(DATA_DIR) 2>/dev/null || true
 	@echo "[+] Starting RustFS container..."
 	docker compose up -d
+	@echo ""
+	@echo "✓ RustFS is starting!"
+	@echo "  Web Console: http://localhost:$(RUSTFS_WEB_PORT)"
+	@echo "  API Endpoint: http://localhost:$(RUSTFS_PORT)"
+	@echo "  Default credentials: $(RUSTFS_ROOT_USER) / $(RUSTFS_ROOT_PASSWORD)"
+	@echo ""
 
 start: up
 
 stop:
+	@echo "[+] Stopping RustFS container..."
 	docker compose down
 
 restart: stop up
@@ -54,31 +46,30 @@ logs:
 	docker compose logs -f
 
 status:
-	docker ps | grep rustfs || true
+	@docker ps | grep rustfs || echo "RustFS container is not running"
 
 clean:
-	docker compose down -v
-	sudo rm -rf ${DATA_DIR}
+	@echo "[!] WARNING: This will delete all data and volumes!"
+	@read -p "Are you sure? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		docker compose down -v; \
+		sudo rm -rf $(DATA_DIR); \
+		echo "✓ Cleaned up"; \
+	else \
+		echo "Cancelled"; \
+	fi
 
 backup:
-	tar czvf rustfs-backup-$(shell date +%Y%m%d_%H%M%S).tar.gz -C ${DATA_DIR} .
+	@echo "[+] Creating backup..."
+	tar czvf rustfs-backup-$(shell date +%Y%m%d_%H%M%S).tar.gz -C $(DATA_DIR) .
+	@echo "✓ Backup created"
 
 restore:
-	@echo "Restoring from backup. Make sure to stop container first!"
-	@echo "Usage: make restore BACKUP_FILE=<path>"
-	tar xzvf ${BACKUP_FILE} -C ${DATA_DIR}
-
-# Build RustFS binary from source (optional)
-binary:
-	@if [ ! -d rustfs-src ]; then \
-		echo "[+] Cloning RustFS source..."; \
-		git clone https://github.com/rustfs/rustfs.git rustfs-src; \
+	@if [ -z "$(BACKUP_FILE)" ]; then \
+		echo "[!] Usage: make restore BACKUP_FILE=<path>"; \
+		exit 1; \
 	fi
-	cd rustfs-src && cargo build --release
-	cp rustfs-src/target/release/rustfs ./rustfs-binary
-
-# Rebuild binary and Docker image
-rebuild:
-	rm -f ./rustfs-binary
-	make binary
-	make build
+	@echo "[+] Restoring from backup. Make sure to stop container first!"
+	tar xzvf $(BACKUP_FILE) -C $(DATA_DIR)
+	@echo "✓ Restore complete"
