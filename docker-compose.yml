@@ -5,13 +5,36 @@ services:
     image: rustfs/rustfs:latest
     container_name: rustfs
     restart: unless-stopped
-    ports:
-      - "8080:8080"   # RustFS HTTP API
-      - "9090:9090"   # Metrics
-      - "9001:9001"   # Web Console
+    expose:
+      - "9000"  # API - internal only
+      - "9001"  # Console - internal only
     volumes:
-      - ./data:/data             # Persistent storage (buckets + files)
-      - ./config:/etc/rustfs     # Config folder mounted as writable
+      - ${DATA_DIR:-./data}:/data
     environment:
-      - RUSTFS_ACCESS_KEY=myaccesskey
-      - RUSTFS_SECRET_KEY=mysecretkey
+      - RUSTFS_ROOT_USER=${RUSTFS_ROOT_USER:-rustfsadmin}
+      - RUSTFS_ROOT_PASSWORD=${RUSTFS_ROOT_PASSWORD:-rustfsadmin}
+    command: /data
+    networks:
+      - rustfs-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: rustfs-nginx
+    restart: unless-stopped
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - rustfs
+    networks:
+      - rustfs-network
+
+networks:
+  rustfs-network:
+    driver: bridge

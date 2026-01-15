@@ -1,37 +1,35 @@
-# ==== Rust ====
-/target/
-**/*.rs.bk
-**/*.rs.tmp
+# Environment
+.env
 
-# Cargo
-/Cargo.lock
+# Data directories
+data/
+logs/
 
-# ==== VSCode / IDE ====
+# SSL certificates
+nginx/ssl/*.pem
+nginx/ssl/*.key
+nginx/ssl/*.crt
+
+# Nginx auth
+nginx/.htpasswd
+
+# Backups
+rustfs-backup-*.tar.gz
+
+# Docker
+.docker/
+
+# Old binaries and source
+rustfs-binary
+rustfs-src/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# ==== Docker ====
-docker-compose.override.yml
-docker-compose.*.override.yml
-*.log
-*.tmp
-
-# ==== Local environment files ====
-.env
-.env.local
-.env.*.local
-
-# ==== Data directories ====
-/data/
-/logs/
-
-# ==== RustFS binary ====
-rustfs-binary
-
-# ==== Backup files ====
-rustfs-backup-*.tar.gz
-
-# ==== Nix ====
-result/
+*~

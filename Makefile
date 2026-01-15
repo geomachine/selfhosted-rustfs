@@ -2,50 +2,47 @@ include .env
 
 # Default directories if not set in env
 DATA_DIR ?= ./data
-CONFIG_DIR ?= ./config
 
-.PHONY: help build up start stop restart logs status clean backup restore binary rebuild
+.PHONY: help up start stop restart logs logs-nginx logs-rustfs status clean backup restore ssl-setup
 
 help:
-	@echo "RustFS Docker Makefile"
-	@echo "---------------------"
-	@echo "make build       - build rustfs docker image (uses rustfs-binary)"
-	@echo "make up          - start rustfs container"
+	@echo "RustFS + Nginx Docker Makefile"
+	@echo "-------------------------------"
+	@echo "make up          - start rustfs + nginx containers"
 	@echo "make start       - alias for 'make up'"
-	@echo "make stop        - stop rustfs container"
-	@echo "make restart     - restart container"
-	@echo "make logs        - follow logs"
-	@echo "make status      - show running container status"
-	@echo "make clean       - remove container and volumes (dangerous)"
+	@echo "make stop        - stop all containers"
+	@echo "make restart     - restart all containers"
+	@echo "make logs        - follow all logs"
+	@echo "make logs-nginx  - follow nginx logs only"
+	@echo "make logs-rustfs - follow rustfs logs only"
+	@echo "make status      - show running containers"
+	@echo "make clean       - remove containers and volumes (dangerous)"
 	@echo "make backup      - backup rustfs data"
 	@echo "make restore     - restore rustfs data from backup"
-	@echo "make binary      - build RustFS binary from source"
-	@echo "make rebuild     - rebuild binary + Docker image"
+	@echo "make ssl-setup   - create self-signed SSL certificate"
 	@echo ""
 
-# Build RustFS Docker image
-build:
-	@if [ -f ./rustfs-binary ]; then \
-		echo "[+] Using existing rustfs-binary"; \
-	else \
-		echo "[!] rustfs-binary not found. Please build it first with 'make binary' or download it."; \
-		exit 1; \
-	fi
-	docker build -t ${RUSTFS_IMAGE} .
-
-# Run Docker container
+# Run Docker containers
 up:
-	@echo "[+] Ensuring data and config directories exist..."
-	@mkdir -p $(DATA_DIR) $(CONFIG_DIR)
-	@touch $(CONFIG_DIR)/config.toml
+	@echo "[+] Ensuring directories exist..."
+	@mkdir -p $(DATA_DIR) nginx/conf.d nginx/ssl
 	@echo "[+] Setting ownership to UID 10001..."
-	@sudo chown -R 10001:10001 $(DATA_DIR) $(CONFIG_DIR)
-	@echo "[+] Starting RustFS container..."
+	@sudo chown -R 10001:10001 $(DATA_DIR) 2>/dev/null || true
+	@echo "[+] Starting RustFS + Nginx containers..."
 	docker compose up -d
+	@echo ""
+	@echo "✓ RustFS + Nginx are starting!"
+	@echo "  Web Console: http://localhost/console/"
+	@echo "  API Endpoint: http://localhost/api/"
+	@echo "  S3 Endpoint: http://localhost/s3/"
+	@echo "  Health Check: http://localhost/health"
+	@echo "  Default credentials: $(RUSTFS_ROOT_USER) / $(RUSTFS_ROOT_PASSWORD)"
+	@echo ""
 
 start: up
 
 stop:
+	@echo "[+] Stopping all containers..."
 	docker compose down
 
 restart: stop up
@@ -53,32 +50,47 @@ restart: stop up
 logs:
 	docker compose logs -f
 
+logs-nginx:
+	docker compose logs -f nginx
+
+logs-rustfs:
+	docker compose logs -f rustfs
+
 status:
-	docker ps | grep rustfs || true
+	@docker ps | grep -E 'rustfs|nginx' || echo "No containers running"
 
 clean:
-	docker compose down -v
-	sudo rm -rf ${DATA_DIR}
+	@echo "[!] WARNING: This will delete all data and volumes!"
+	@read -p "Are you sure? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		docker compose down -v; \
+		sudo rm -rf $(DATA_DIR); \
+		echo "✓ Cleaned up"; \
+	else \
+		echo "Cancelled"; \
+	fi
 
 backup:
-	tar czvf rustfs-backup-$(shell date +%Y%m%d_%H%M%S).tar.gz -C ${DATA_DIR} .
+	@echo "[+] Creating backup..."
+	tar czvf rustfs-backup-$(shell date +%Y%m%d_%H%M%S).tar.gz -C $(DATA_DIR) .
+	@echo "✓ Backup created"
 
 restore:
-	@echo "Restoring from backup. Make sure to stop container first!"
-	@echo "Usage: make restore BACKUP_FILE=<path>"
-	tar xzvf ${BACKUP_FILE} -C ${DATA_DIR}
-
-# Build RustFS binary from source (optional)
-binary:
-	@if [ ! -d rustfs-src ]; then \
-		echo "[+] Cloning RustFS source..."; \
-		git clone https://github.com/rustfs/rustfs.git rustfs-src; \
+	@if [ -z "$(BACKUP_FILE)" ]; then \
+		echo "[!] Usage: make restore BACKUP_FILE=<path>"; \
+		exit 1; \
 	fi
-	cd rustfs-src && cargo build --release
-	cp rustfs-src/target/release/rustfs ./rustfs-binary
+	@echo "[+] Restoring from backup. Make sure to stop container first!"
+	tar xzvf $(BACKUP_FILE) -C $(DATA_DIR)
+	@echo "✓ Restore complete"
 
-# Rebuild binary and Docker image
-rebuild:
-	rm -f ./rustfs-binary
-	make binary
-	make build
+ssl-setup:
+	@echo "[+] Creating self-signed SSL certificate..."
+	@mkdir -p nginx/ssl
+	@openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+		-keyout nginx/ssl/key.pem \
+		-out nginx/ssl/cert.pem \
+		-subj "/C=US/ST=State/L=City/O=Organization/CN=$(DOMAIN_NAME)"
+	@echo "✓ Self-signed certificate created in nginx/ssl/"
+	@echo "  To enable HTTPS, uncomment the HTTPS server block in nginx/conf.d/rustfs.conf"
