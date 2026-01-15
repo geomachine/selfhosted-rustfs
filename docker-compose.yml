@@ -11,8 +11,8 @@ services:
     volumes:
       - ${DATA_DIR:-./data}:/data
     environment:
-      - RUSTFS_ROOT_USER=${RUSTFS_ROOT_USER}
-      - RUSTFS_ROOT_PASSWORD=${RUSTFS_ROOT_PASSWORD}
+      - RUSTFS_ACCESS_KEY=${RUSTFS_ACCESS_KEY}
+      - RUSTFS_SECRET_KEY=${RUSTFS_SECRET_KEY}
     command: /data
     networks:
       - rustfs-network
