@@ -3,95 +3,61 @@ include .env
 # Default directories if not set in env
 DATA_DIR ?= ./data
 
-.PHONY: help up start stop restart logs logs-nginx logs-rustfs status clean backup restore ssl-setup dev dev-stop
+.PHONY: help up dev dev-stop stop logs fix-permissions backup restore clean
 
 help:
-	@echo "RustFS + Nginx Docker Makefile"
-	@echo "-------------------------------"
-	@echo "make up          - start rustfs + nginx containers (production)"
-	@echo "make dev         - start rustfs only (local development)"
-	@echo "make start       - alias for 'make up'"
-	@echo "make stop        - stop all containers"
+	@echo "RustFS Docker Makefile"
+	@echo "----------------------"
+	@echo "make dev         - start rustfs (local development)"
 	@echo "make dev-stop    - stop development containers"
-	@echo "make restart     - restart all containers"
-	@echo "make logs        - follow all logs"
-	@echo "make logs-nginx  - follow nginx logs only"
-	@echo "make logs-rustfs - follow rustfs logs only"
-	@echo "make status      - show running containers"
-	@echo "make clean       - remove containers and volumes (dangerous)"
+	@echo "make up          - start rustfs + nginx (production)"
+	@echo "make stop        - stop all containers"
+	@echo "make logs        - follow logs"
+	@echo "make fix-permissions - fix data directory permissions"
 	@echo "make backup      - backup rustfs data"
-	@echo "make restore     - restore rustfs data from backup"
-	@echo "make ssl-setup   - create self-signed SSL certificate"
+	@echo "make restore     - restore rustfs data"
+	@echo "make clean       - remove containers and data"
 	@echo ""
 
-# Run Docker containers
-up:
-	@echo "[+] Ensuring directories exist..."
-	@mkdir -p $(DATA_DIR) nginx/conf.d nginx/ssl
-	@echo "[+] Setting ownership to UID 10001..."
-	@sudo chown -R 10001:10001 $(DATA_DIR) 2>/dev/null || true
-	@echo "[+] Starting RustFS + Nginx containers..."
-	docker compose up -d
-	@echo ""
-	@echo "✓ RustFS + Nginx are starting!"
-	@echo "  Web Console: http://localhost/console/"
-	@echo "  API Endpoint: http://localhost/api/"
-	@echo "  S3 Endpoint: http://localhost/s3/"
-	@echo "  Health Check: http://localhost/health"
-	@echo "  Default credentials: $(RUSTFS_ROOT_USER) / $(RUSTFS_ROOT_PASSWORD)"
-	@echo ""
-
-start: up
-
-# Local development (no nginx, direct access)
-dev:
-	@echo "[+] Ensuring data directory exists..."
+# Fix permissions for macOS
+fix-permissions:
+	@echo "[+] Fixing data directory permissions..."
 	@mkdir -p $(DATA_DIR)
-	@echo "[+] Setting ownership to UID 10001..."
-	@sudo chown -R 10001:10001 $(DATA_DIR) 2>/dev/null || true
-	@echo "[+] Starting RustFS (local development mode)..."
+	@sudo chown -R 10001:10001 $(DATA_DIR)
+	@sudo chmod -R 777 $(DATA_DIR)
+	@xattr -rc $(DATA_DIR) 2>/dev/null || true
+	@echo "✓ Data directory permissions fixed: $(DATA_DIR)"
+
+# Local development
+dev: fix-permissions
+	@echo "[+] Starting RustFS (local development)..."
 	docker compose -f docker-compose.local.yml up -d
-	@echo ""
-	@echo "✓ RustFS is starting (local development)!"
+	@echo "✓ RustFS started!"
 	@echo "  Web Console: http://localhost:9001/rustfs/console/"
 	@echo "  API Endpoint: http://localhost:9000/"
-	@echo "  Default credentials: $(RUSTFS_ROOT_USER) / $(RUSTFS_ROOT_PASSWORD)"
-	@echo ""
+	@echo "  Data: $(DATA_DIR)"
 
 dev-stop:
 	@echo "[+] Stopping development containers..."
 	docker compose -f docker-compose.local.yml down
 
+# Production with nginx
+up: fix-permissions
+	@echo "[+] Starting RustFS + Nginx..."
+	@mkdir -p nginx/conf.d nginx/ssl
+	docker compose up -d
+	@echo "✓ RustFS + Nginx started!"
+	@echo "  Web Console: http://localhost/console/"
+	@echo "  API Endpoint: http://localhost/api/"
+
 stop:
 	@echo "[+] Stopping all containers..."
 	docker compose down
 
-restart: stop up
-
 logs:
 	docker compose logs -f
 
-logs-nginx:
-	docker compose logs -f nginx
-
-logs-rustfs:
-	docker compose logs -f rustfs
-
-status:
-	@docker ps | grep -E 'rustfs|nginx' || echo "No containers running"
-
-clean:
-	@echo "[!] WARNING: This will delete all data and volumes!"
-	@read -p "Are you sure? [y/N] " -n 1 -r; \
-	echo; \
-	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		docker compose down -v; \
-		sudo rm -rf $(DATA_DIR); \
-		echo "✓ Cleaned up"; \
-	else \
-		echo "Cancelled"; \
-	fi
-
+# Backup and restore
 backup:
 	@echo "[+] Creating backup..."
 	tar czvf rustfs-backup-$(shell date +%Y%m%d_%H%M%S).tar.gz -C $(DATA_DIR) .
@@ -99,19 +65,31 @@ backup:
 
 restore:
 	@if [ -z "$(BACKUP_FILE)" ]; then \
-		echo "[!] Usage: make restore BACKUP_FILE=<path>"; \
+		echo "[!] Usage: make restore BACKUP_FILE=<filename>"; \
 		exit 1; \
 	fi
-	@echo "[+] Restoring from backup. Make sure to stop container first!"
-	tar xzvf $(BACKUP_FILE) -C $(DATA_DIR)
-	@echo "✓ Restore complete"
+	@echo "[+] Stopping containers..."
+	@docker compose -f docker-compose.local.yml down 2>/dev/null || true
+	@docker compose down 2>/dev/null || true
+	@echo "[+] Restoring $(BACKUP_FILE)..."
+	@echo "[!] This will overwrite existing data!"
+	@read -p "Continue? [y/N] " -n 1 -r; \
+	echo; \
+	if [ "$$REPLY" = "y" ] || [ "$$REPLY" = "Y" ]; then \
+		sudo rm -rf $(DATA_DIR); \
+		mkdir -p $(DATA_DIR); \
+		sudo tar -xzf $(BACKUP_FILE) -C $(DATA_DIR) --no-same-owner; \
+		$(MAKE) fix-permissions; \
+		ls -la $(DATA_DIR)/; \
+		echo "✓ Restore complete"; \
+	fi
 
-ssl-setup:
-	@echo "[+] Creating self-signed SSL certificate..."
-	@mkdir -p nginx/ssl
-	@openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-		-keyout nginx/ssl/key.pem \
-		-out nginx/ssl/cert.pem \
-		-subj "/C=US/ST=State/L=City/O=Organization/CN=$(DOMAIN_NAME)"
-	@echo "✓ Self-signed certificate created in nginx/ssl/"
-	@echo "  To enable HTTPS, uncomment the HTTPS server block in nginx/conf.d/rustfs.conf"
+clean:
+	@echo "[!] WARNING: This will delete all data!"
+	@read -p "Continue? [y/N] " -n 1 -r; \
+	echo; \
+	if [ "$$REPLY" = "y" ] || [ "$$REPLY" = "Y" ]; then \
+		docker compose down -v; \
+		sudo rm -rf $(DATA_DIR); \
+		echo "✓ Cleaned up"; \
+	fi
