@@ -164,8 +164,8 @@ CONSOLE_DOMAIN=rustfs.yourdomain.com
 API_DOMAIN=api-rustfs.yourdomain.com
 
 # Strong credentials (CHANGE THESE!)
-RUSTFS_ROOT_USER=your_admin_username
-RUSTFS_ROOT_PASSWORD=your_strong_password_here
+RUSTFS_ACCESS_KEY=rustfsadmin
+RUSTFS_SECRET_KEY=rustfsadmin
 
 # Ports (usually keep defaults)
 NGINX_HTTP_PORT=80
